@@ -3,11 +3,15 @@ package com.example.justatest.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class PostRequestDto {
     @NotNull(message = "O campo title é obrigatório.")
     @NotBlank(message = "O título não pode ser vazio.")
