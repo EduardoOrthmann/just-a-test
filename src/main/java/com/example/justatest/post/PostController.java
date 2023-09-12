@@ -23,9 +23,7 @@ public class PostController {
 
     @GetMapping("/{id}")
     public ResponseEntity<PostResponseDto> findById(@PathVariable(value = "id") UUID id) {
-        return postService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        return ResponseEntity.ok(postService.findById(id));
     }
 
     @PostMapping
@@ -35,18 +33,12 @@ public class PostController {
 
     @PutMapping("/{id}")
     public ResponseEntity<PostResponseDto> update(@PathVariable(value = "id") UUID id, @RequestBody @Valid PostRequestDto postRequestDto) {
-        return postService.update(id, postRequestDto)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        return ResponseEntity.ok(postService.update(id, postRequestDto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable(value = "id") UUID id) {
-        return postService.findById(id)
-                .map(entity -> {
-                    postService.deleteById(id);
-                    return ResponseEntity.noContent().build();
-                })
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<Void> delete(@PathVariable(value = "id") UUID id) {
+        postService.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }

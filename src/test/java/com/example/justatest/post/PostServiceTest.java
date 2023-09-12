@@ -2,6 +2,7 @@ package com.example.justatest.post;
 
 import com.example.justatest.dto.PostRequestDto;
 import com.example.justatest.dto.PostResponseDto;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,17 +37,20 @@ class PostServiceTest {
         this.post = new Post(UUID.randomUUID(), "Title", "Description");
     }
 
-    @DisplayName("Test for findAll method in PostService")
     @Test
-    void shouldReturnAllPosts() {
+    @DisplayName("findAll() -> should return all posts")
+    void findAll_shouldReturnAllPosts() {
+        // Arrange
         PostResponseDto mockPostResponseDto = new PostResponseDto(post.getId(), post.getTitle(), post.getDescription());
 
-        doReturn(List.of(post)).when(postRepository).findAll();
-        doReturn(mockPostResponseDto).when(modelMapper).map(post, PostResponseDto.class);
+        when(postRepository.findAll()).thenReturn(List.of(post));
+        when(modelMapper.map(post, PostResponseDto.class)).thenReturn(mockPostResponseDto);
 
+        // Act
         List<PostResponseDto> postResponseDtoList = postService.findAll();
         PostResponseDto postResponseDto = postResponseDtoList.get(0);
 
+        // Assert
         assertEquals(1, postResponseDtoList.size());
         assertEquals(post.getId(), postResponseDto.getId());
         assertEquals(post.getTitle(), postResponseDto.getTitle());
@@ -56,17 +60,19 @@ class PostServiceTest {
         verify(modelMapper, times(1)).map(post, PostResponseDto.class);
     }
 
-    @DisplayName("Test for findById method in PostService")
     @Test
-    void shouldReturnPostById() {
+    @DisplayName("findById() -> should return post by id")
+    void findById_shouldReturnPostById() {
+        // Arrange
         PostResponseDto mockPostResponseDto = new PostResponseDto(post.getId(), post.getTitle(), post.getDescription());
 
-        doReturn(Optional.of(post)).when(postRepository).findById(post.getId());
-        doReturn(mockPostResponseDto).when(modelMapper).map(post, PostResponseDto.class);
+        when(postRepository.findById(post.getId())).thenReturn(Optional.of(post));
+        when(modelMapper.map(post, PostResponseDto.class)).thenReturn(mockPostResponseDto);
 
-        Optional<PostResponseDto> postResponseDtoOptional = postService.findById(post.getId());
-        PostResponseDto postResponseDto = postResponseDtoOptional.orElseGet(PostResponseDto::new);
+        // Act
+        PostResponseDto postResponseDto = postService.findById(post.getId());
 
+        // Assert
         assertEquals(post.getId(), postResponseDto.getId());
         assertEquals(post.getTitle(), postResponseDto.getTitle());
         assertEquals(post.getDescription(), postResponseDto.getDescription());
@@ -75,24 +81,26 @@ class PostServiceTest {
         verify(modelMapper, times(1)).map(post, PostResponseDto.class);
     }
 
-    @DisplayName("Test for findById method in PostService when post not found")
     @Test
-    void whenPostNotFoundById_shouldReturnEmptyOptional() {
-        UUID randomUUID = UUID.randomUUID();
+    @DisplayName("findById() -> when post not found by id -> should throw EntityNotFoundException")
+    void findById_shouldThrowEntityNotFoundWhenPostNotFound() {
+        // Arrange
+        when(postRepository.findById(any())).thenReturn(Optional.empty());
 
-        doReturn(Optional.empty()).when(postRepository).findById(randomUUID);
+        // Act
+        Runnable runnable = () -> postService.findById(post.getId());
 
-        Optional<PostResponseDto> postResponseDtoOptional = postService.findById(randomUUID);
+        // Assert
+        assertThrows(EntityNotFoundException.class, runnable::run);
 
-        assertTrue(postResponseDtoOptional.isEmpty());
-
-        verify(postRepository, times(1)).findById(randomUUID);
+        verify(postRepository, times(1)).findById(post.getId());
         verify(modelMapper, times(0)).map(post, PostResponseDto.class);
     }
 
-    @DisplayName("Test for save method in PostService")
     @Test
-    void shouldSavePost() {
+    @DisplayName("save() -> should save post")
+    void save_shouldSavePost() {
+        // Arrange
         PostRequestDto mockPostRequestDto = new PostRequestDto(post.getTitle(), post.getDescription());
         PostResponseDto mockPostResponseDto = new PostResponseDto(post.getId(), post.getTitle(), post.getDescription());
 
@@ -100,8 +108,10 @@ class PostServiceTest {
         doReturn(post).when(modelMapper).map(mockPostRequestDto, Post.class);
         doReturn(mockPostResponseDto).when(modelMapper).map(post, PostResponseDto.class);
 
+        // Act
         PostResponseDto savedPostResponseDto = postService.save(mockPostRequestDto);
 
+        // Assert
         assertEquals(mockPostResponseDto.getId(), savedPostResponseDto.getId());
         assertEquals(mockPostResponseDto.getTitle(), savedPostResponseDto.getTitle());
         assertEquals(mockPostResponseDto.getDescription(), savedPostResponseDto.getDescription());
@@ -111,22 +121,19 @@ class PostServiceTest {
         verify(modelMapper, times(1)).map(post, PostResponseDto.class);
     }
 
-    @DisplayName("Test for update method in PostService")
     @Test
-    void shouldUpdatePost() {
+    @DisplayName("update() -> should update post")
+    void update_shouldUpdatePost() {
         PostRequestDto mockPostRequestDto = new PostRequestDto("Updated Title", "Updated Description");
         Post mockUpdatedPost = new Post(post.getId(), mockPostRequestDto.getTitle(), mockPostRequestDto.getDescription());
         PostResponseDto mockPostResponseDto = new PostResponseDto(mockUpdatedPost.getId(), mockUpdatedPost.getTitle(), mockUpdatedPost.getDescription());
 
-        doReturn(Optional.of(post)).when(postRepository).findById(post.getId());
+        when(postRepository.findById(any())).thenReturn(Optional.of(post));
         doNothing().when(modelMapper).map(mockPostRequestDto, post);
-        doReturn(mockUpdatedPost).when(postRepository).save(post);
-        doReturn(mockPostResponseDto).when(modelMapper).map(mockUpdatedPost, PostResponseDto.class);
+        when(postRepository.save(post)).thenReturn(mockUpdatedPost);
+        when(modelMapper.map(mockUpdatedPost, PostResponseDto.class)).thenReturn(mockPostResponseDto);
 
-        Optional<PostResponseDto> updatedPostOptional = postService.update(post.getId(), mockPostRequestDto);
-
-        assertTrue(updatedPostOptional.isPresent());
-        PostResponseDto updatedPost = updatedPostOptional.get();
+        PostResponseDto updatedPost = postService.update(post.getId(), mockPostRequestDto);
 
         assertEquals(mockPostResponseDto.getId(), updatedPost.getId());
         assertEquals(mockPostResponseDto.getTitle(), updatedPost.getTitle());
@@ -138,42 +145,54 @@ class PostServiceTest {
         verify(modelMapper, times(1)).map(mockUpdatedPost, PostResponseDto.class);
     }
 
-    @DisplayName("Test for update method in PostService when post not found")
     @Test
-    void whenPostNotFound_shouldReturnEmptyOptional() {
-        UUID randomUUID = UUID.randomUUID();
+    @DisplayName("update() -> when post not found -> should throw EntityNotFoundException")
+    void update_shouldThrowEntityNotFoundWhenPostNotFound() {
+        // Arrange
         PostRequestDto mockPostRequestDto = new PostRequestDto("Updated Title", "Updated Description");
 
-        doReturn(Optional.empty()).when(postRepository).findById(randomUUID);
+        when(postRepository.findById(any())).thenReturn(Optional.empty());
 
-        Optional<PostResponseDto> updatedPostOptional = postService.update(randomUUID, mockPostRequestDto);
+        // Act
+        Runnable runnable = () -> postService.update(post.getId(), mockPostRequestDto);
 
-        assertTrue(updatedPostOptional.isEmpty());
+        // Assert
+        assertThrows(EntityNotFoundException.class, runnable::run);
 
-        verify(postRepository, times(1)).findById(randomUUID);
+        verify(postRepository, times(1)).findById(post.getId());
         verify(postRepository, times(0)).save(post);
         verify(modelMapper, times(0)).map(mockPostRequestDto, post);
         verify(modelMapper, times(0)).map(post, PostResponseDto.class);
     }
 
-    @DisplayName("Test for deleteById method in PostService")
     @Test
-    void shouldDeletePostById() {
-        doNothing().when(postRepository).deleteById(post.getId());
+    @DisplayName("deleteById() -> should delete post by id")
+    void delete_shouldDeletePostById() {
+        // Arrange
+        when(postRepository.existsById(any())).thenReturn(true);
+        doNothing().when(postRepository).deleteById(any());
 
+        // Act
         postService.deleteById(post.getId());
 
+        // Assert
+        verify(postRepository, times(1)).existsById(post.getId());
         verify(postRepository, times(1)).deleteById(post.getId());
     }
 
-    @DisplayName("Test for deleteById method in PostService when post not found")
     @Test
-    void whenPostNotFound_shouldDoNothing() {
-        UUID randomUUID = UUID.randomUUID();
-        doNothing().when(postRepository).deleteById(randomUUID);
+    @DisplayName("deleteById() -> when post not found -> should throw EntityNotFoundException")
+    void delete_shouldThrowEntityNotFoundWhenPostNotFound() {
+        // Arrange
+        when(postRepository.existsById(any())).thenReturn(false);
 
-        postService.deleteById(randomUUID);
+        // Act
+        Runnable runnable = () -> postService.deleteById(post.getId());
 
-        verify(postRepository, times(1)).deleteById(randomUUID);
+        // Assert
+        assertThrows(EntityNotFoundException.class, runnable::run);
+
+        verify(postRepository, times(1)).existsById(post.getId());
+        verify(postRepository, times(0)).deleteById(post.getId());
     }
 }
